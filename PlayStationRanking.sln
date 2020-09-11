@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30413.136
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "PlayStationRanking.WebSite", "PlayStationRanking.WebApi\PlayStationRanking.WebSite.njsproj", "{B7A73208-4E51-4B83-A429-491293A82271}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlayStationRanking.WebApi", "PlayStationRanking.WebApi\PlayStationRanking.WebApi.csproj", "{0FD585CB-EA24-47BC-8997-010A50BE6FB7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B7A73208-4E51-4B83-A429-491293A82271}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7A73208-4E51-4B83-A429-491293A82271}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7A73208-4E51-4B83-A429-491293A82271}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7A73208-4E51-4B83-A429-491293A82271}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0FD585CB-EA24-47BC-8997-010A50BE6FB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0FD585CB-EA24-47BC-8997-010A50BE6FB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0FD585CB-EA24-47BC-8997-010A50BE6FB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0FD585CB-EA24-47BC-8997-010A50BE6FB7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7041E3BD-D12C-4777-A9F9-48558791C7F5}
+	EndGlobalSection
+EndGlobal

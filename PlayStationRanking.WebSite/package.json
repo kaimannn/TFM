@@ -1,0 +1,42 @@
+{
+  "name": "play-station-ranking",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "description": "PlayStationRanking",
+  "author": {
+    "name": ""
+  },
+  "dependencies": {
+    "bootstrap": "^4.5.2",
+    "jquery": "^3.5.1",
+    "lodash.orderby": "^4.6.0",
+    "popper.js": "^1.16.1",
+    "resolve-url-loader": "^3.1.1",
+    "vue": "2.5.17",
+    "vue-class-component": "6.0.0",
+    "vue-property-decorator": "7.0.0",
+    "vue-simple-spinner": "^1.2.10",
+    "vuetify": "^2.3.10"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "3.0.4",
+    "@vue/cli-plugin-typescript": "3.0.4",
+    "@vue/cli-service": "3.0.4",
+    "typescript": "3.1.1",
+    "vue-template-compiler": "2.5.17"
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {}
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ]
+}
