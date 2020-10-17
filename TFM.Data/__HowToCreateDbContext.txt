@@ -1,0 +1,3 @@
+Scaffold-DbContext "Server=.\sqlexpress01;Database=TFM;User Id=sa;Password=admin;" Microsoft.EntityFrameworkCore.SqlServer -UseDatabaseNames -Force -OutputDir DB
+
+REMEMBER TO DELETE METHOD protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) on TFMContext.cs
