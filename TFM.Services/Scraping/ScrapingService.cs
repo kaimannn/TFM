@@ -38,7 +38,7 @@ namespace TFM.Services.Scraping
             {
                 return Task.Run(async () =>
                 {
-                    int numPage = 0;
+                    int numPage = 0; ;
                     int numGames = 0;
 
                     // Get the first n games from metacritic
