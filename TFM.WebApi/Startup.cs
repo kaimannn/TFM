@@ -12,6 +12,8 @@ namespace TFM.WebApi
 {
     public class Startup
     {
+        private readonly string MyAllowAllOrigins = "_myAllowAllOrigins";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -22,6 +24,15 @@ namespace TFM.WebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // CORS
+            services.AddCors(o => o.AddPolicy(MyAllowAllOrigins, builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            }));
+
+            // Controllers
             services.AddControllers();
 
             //DB
@@ -51,13 +62,15 @@ namespace TFM.WebApi
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseCors(MyAllowAllOrigins);
+
             app.UseSwagger();
 
             // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
             // specifying the Swagger JSON endpoint.
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Cicero API");
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Games API");
                 c.RoutePrefix = string.Empty;
             });
 

@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TFM.WebScraping", "TFM.WebS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TFM.Data", "TFM.Data\TFM.Data.csproj", "{A51C243D-C0F1-4D00-A225-0CCEA9D17654}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TFM.Services", "TFM.Services\TFM.Services.csproj", "{94972A0A-A4C7-4CFA-9367-6984F9DAD41E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TFM.Services", "TFM.Services\TFM.Services.csproj", "{94972A0A-A4C7-4CFA-9367-6984F9DAD41E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

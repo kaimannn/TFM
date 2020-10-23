@@ -2,6 +2,6 @@
 {
     public class GamesFilter
     {
-        public int MaxGames { get; set; }
+        public int NumberOfGamesToShow { get; set; }
     }
 }

@@ -1,11 +1,8 @@
 ﻿using HtmlAgilityPack;
 using Newtonsoft.Json;
-using RestSharp;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using TFM.Data.Models.Metacritic;
@@ -38,7 +35,7 @@ namespace TFM.Services.Scraping
             {
                 return Task.Run(async () =>
                 {
-                    int numPage = 0; ;
+                    int numPage = 0;
                     int numGames = 0;
 
                     // Get the first n games from metacritic

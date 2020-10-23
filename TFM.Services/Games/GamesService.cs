@@ -39,8 +39,8 @@ namespace TFM.Services
         {
             var query = _db.Games.AsQueryable();
 
-            if (filter?.MaxGames > 0)
-                query = query.Where(g => g.Position <= filter.MaxGames);
+            if (filter?.NumberOfGamesToShow > 0)
+                query = query.Where(g => g.Position <= filter.NumberOfGamesToShow);
 
             return await query.OrderBy(g => g.Position).Select(g => new Game(g)).ToListAsync();
         }
