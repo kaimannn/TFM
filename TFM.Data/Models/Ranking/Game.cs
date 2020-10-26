@@ -2,7 +2,7 @@
 using TFM.Data.DB;
 using TFM.Data.Models.Metacritic;
 
-namespace TFM.Data.Models.Game
+namespace TFM.Data.Models.Ranking
 {
     public class Game
     {

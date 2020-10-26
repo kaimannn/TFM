@@ -1,48 +1,37 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Google.Cloud.Translation.V2;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using TFM.Data.DB;
-using TFM.Data.Filters;
-using TFM.Data.Models.Game;
+using TFM.Data.Models.Ranking;
 
-namespace TFM.Services
+namespace TFM.Services.Ranking
 {
-    public interface IGamesService
+    public interface IRankingService
     {
-        Task<IEnumerable<Game>> GetAllAsync(GamesFilter filter);
-        Task<Game> GetByIdAsync(int id);
         Task<IEnumerable<MailMessage>> UpsertRanking(IEnumerable<Game> games);
     }
 
-    public class GamesService : IGamesService
+    public class RankingService : IRankingService
     {
         private readonly object _locker = new object();
 
-        private readonly TFMContext _db = null;
         private readonly Data.Models.Configuration.AppSettings _config = null;
         private readonly IServiceProvider _sp = null;
+        private readonly ILogger<RankingService> _logger;
+        private readonly TranslationClient _translationClient;
 
-        public GamesService(TFMContext db, Data.Models.Configuration.AppSettings config, IServiceProvider sp)
+        public RankingService(Data.Models.Configuration.AppSettings config, IServiceProvider sp, ILogger<RankingService> logger)
         {
-            _db = db;
             _config = config;
             _sp = sp;
-        }
-
-        public async Task<Game> GetByIdAsync(int id) => await _db.Games.Where(g => g.Id == id).Select(g => new Game(g)).FirstOrDefaultAsync();
-
-        public async Task<IEnumerable<Game>> GetAllAsync(GamesFilter filter)
-        {
-            var query = _db.Games.AsQueryable();
-
-            if (filter?.NumberOfGamesToShow > 0)
-                query = query.Where(g => g.Position <= filter.NumberOfGamesToShow);
-
-            return await query.OrderBy(g => g.Position).Select(g => new Game(g)).ToListAsync();
+            _logger = logger;
+            _translationClient = TranslationClient.Create();
         }
 
         public async Task<IEnumerable<MailMessage>> UpsertRanking(IEnumerable<Game> games)
@@ -59,6 +48,7 @@ namespace TFM.Services
                     var platformGames = games.Where(g => g.Platform == platform.Key);
                     var dbPlatformGames = await db.Games.Where(g => g.Platform == (int)platform.Key).ToListAsync();
                     var gamesToRemove = dbPlatformGames.Where(pg => !platformGames.Any(g => g.Name == pg.Name));
+
                     db.Games.RemoveRange(gamesToRemove);
 
                     foreach (var game in platformGames)
@@ -69,7 +59,7 @@ namespace TFM.Services
                             _ = db.Games.Add(new Games
                             {
                                 CompanyName = game.CompanyName,
-                                LongDescription = game.LongDescription,
+                                LongDescription = (await _translationClient.TranslateHtmlAsync(game.LongDescription, "es")).TranslatedText,
                                 Name = game.Name,
                                 Position = game.Position,
                                 Score = game.Score,
@@ -83,7 +73,7 @@ namespace TFM.Services
                             if (dbPlatformGames.Any())
                             {
                                 lock (_locker)
-                                    mails.Add(new MailMessage { Subject = "TODO: New Translation!", Body = $"{ game.Name} -> New { game.Platform} game inserted at position { game.Position}" });
+                                    mails.Add(new MailMessage { Subject = "TODO: New Translation to Review!", Body = $"{game.Name} -> New {game.Platform} game inserted at position {game.Position}" });
                             }
                         }
                         else
@@ -99,8 +89,7 @@ namespace TFM.Services
 
                     await db.SaveChangesAsync();
 
-                    Console.ForegroundColor = ConsoleColor.White;
-                    Console.WriteLine($"{platform.Key} database updated!");
+                    _logger.LogInformation($"{platform.Key} database updated!");
                 });
             });
 

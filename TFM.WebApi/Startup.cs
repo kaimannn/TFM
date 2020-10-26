@@ -7,6 +7,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TFM.Data.Models.Configuration;
+using TFM.Services.JobServices.Ping;
+using TFM.Services.JobServices.Ranking;
+using TFM.Services.Mail;
+using TFM.Services.Ranking;
+using TFM.Services.Scraping;
 
 namespace TFM.WebApi
 {
@@ -24,7 +30,7 @@ namespace TFM.WebApi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // CORS
+            // Register CORS
             services.AddCors(o => o.AddPolicy(MyAllowAllOrigins, builder =>
             {
                 builder.AllowAnyOrigin()
@@ -32,25 +38,42 @@ namespace TFM.WebApi
                        .AllowAnyHeader();
             }));
 
-            // Controllers
+            // Register Controllers
             services.AddControllers();
 
-            //DB
-            services.AddDbContext<Data.DB.TFMContext>(
-                (sp, options) => options.UseSqlServer(sp.GetRequiredService<Data.Models.Configuration.AppSettings>().TFMConnectionString));
+            // Register DB
+            services.AddDbContext<Data.DB.TFMContext>((sp, options) => options.UseSqlServer(sp.GetRequiredService<AppSettings>().TFMConnectionString,
+                sqlServerOptionsAction: sqlOptions =>
+                {
+                    sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 10,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+                })
+            );
 
-            //Configs
-            services.AddSingleton(Configuration.Get<Data.Models.Configuration.AppSettings>());
+            // Register Configs
+            services.AddSingleton(Configuration.Get<AppSettings>());
 
-            //Services
-            services.AddTransient<Services.IGamesService, Services.GamesService>();
+            // Register HttpClient
+            services.AddHttpClient();
 
-            services.AddSwaggerGen(c => 
+            // Register Services
+            services.AddTransient<IRankingService, RankingService>();
+            services.AddTransient<IMailService, MailService>();
+            services.AddTransient<IScrapingService, ScrapingService>();
+
+            // Register Hosted Services
+            services.AddHostedService<PingJobService>();
+            services.AddHostedService<LoadRankingJobService>();
+
+            // Register Swagger
+            services.AddSwaggerGen(options =>
             {
                 // Set the comments path for the Swagger JSON and UI.
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
+                options.IncludeXmlComments(xmlPath);
             });
         }
 

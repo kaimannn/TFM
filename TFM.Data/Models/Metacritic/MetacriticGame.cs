@@ -1,4 +1,4 @@
-﻿using TFM.Data.Models.Game;
+﻿using TFM.Data.Models.Ranking;
 
 namespace TFM.Data.Models.Metacritic
 {

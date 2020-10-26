@@ -49,7 +49,6 @@ namespace TFM.Services.Mail
             }
         }
 
-
         public void Dispose()
         {
             if (disposed)

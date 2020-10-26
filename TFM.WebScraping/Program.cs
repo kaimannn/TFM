@@ -5,9 +5,9 @@ using System;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
-using TFM.Data.Models.Game;
-using TFM.Services;
+using TFM.Data.Models.Ranking;
 using TFM.Services.Mail;
+using TFM.Services.Ranking;
 using TFM.Services.Scraping;
 
 namespace TFM.WebScraping
@@ -36,7 +36,7 @@ namespace TFM.WebScraping
                 var metacriticObjects = await sp.GetService<IScrapingService>().Scrape();
 
                 // update db ranking
-                var mails = await sp.GetService<IGamesService>().UpsertRanking(metacriticObjects.Select(mo => new Game(mo.Result)));
+                var mails = await sp.GetService<IRankingService>().UpsertRanking(metacriticObjects.Select(mo => new Game(mo.Result)));
 
                 // new added games notifications
                 foreach (var mail in mails)
@@ -83,7 +83,7 @@ namespace TFM.WebScraping
 
             // Services
             services.AddSingleton<IScrapingService, ScrapingService>();
-            services.AddSingleton<IGamesService, GamesService>();
+            services.AddSingleton<IRankingService, RankingService>();
             services.AddSingleton<IMailService, MailService>();
 
             // HttpClient

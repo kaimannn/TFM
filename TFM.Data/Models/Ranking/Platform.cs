@@ -1,4 +1,4 @@
-﻿namespace TFM.Data.Models.Game
+﻿namespace TFM.Data.Models.Ranking
 {
     public enum Platform
     {

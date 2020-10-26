@@ -1,10 +1,12 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using TFM.Data.Models.Configuration;
 using TFM.Data.Models.Metacritic;
 
 namespace TFM.Services.Scraping
@@ -18,13 +20,17 @@ namespace TFM.Services.Scraping
     {
         private readonly object _locker = new object();
 
+        private readonly ILogger<ScrapingService> _logger = null;
         private readonly HttpClient _httpClient = null;
-        private readonly Data.Models.Configuration.AppSettings _config = null;
+        private readonly AppSettings _config = null;
 
-        public ScrapingService(Data.Models.Configuration.AppSettings config, HttpClient httpClient)
+        public ScrapingService(AppSettings config, IHttpClientFactory clientFactory, ILogger<ScrapingService> logger)
         {
             _config = config;
-            _httpClient = httpClient;
+            _logger = logger;
+            _httpClient = clientFactory.CreateClient();
+            _httpClient.DefaultRequestHeaders.Add("x-rapidapi-host", _config.MetacriticApi.Host);
+            _httpClient.DefaultRequestHeaders.Add("x-rapidapi-key", _config.MetacriticApi.Key);
         }
 
         public async Task<IEnumerable<MetacriticObject>> Scrape()
@@ -43,8 +49,7 @@ namespace TFM.Services.Scraping
                     {
                         var scrapingUrl = string.Format(platform.Value.ScrapingUrl, numPage);
 
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine($"Scraping: {scrapingUrl}");
+                        _logger.LogInformation($"Scraping: {scrapingUrl}");
 
                         // Get the Html Content from one metacritic web page
                         var htmlContent = await _httpClient.GetStringAsync(new Uri(scrapingUrl));
@@ -71,21 +76,22 @@ namespace TFM.Services.Scraping
                                 var responseString = await _httpClient.GetStringAsync(new Uri(apiUrl));
                                 var metacriticObject = JsonConvert.DeserializeObject<MetacriticObject>(responseString);
                                 var imageBytes = await _httpClient.GetByteArrayAsync(new Uri(metacriticObject.Result.Image));
+
                                 metacriticObject.Result.ImageBytes = imageBytes;
                                 metacriticObject.Result.Platform = platform.Key;
                                 metacriticObject.Result.Position = ++numGames;
 
-                                lock (_locker) metacriticObjects.Add(metacriticObject);
+                                lock (_locker)
+                                    metacriticObjects.Add(metacriticObject);
 
-                                Console.ForegroundColor = ConsoleColor.DarkGreen;
-                                Console.WriteLine($"\t{numGames}. {platform.Key} game retrieved: {title}");
+                                _logger.LogInformation($"{numGames}. {platform.Key} game retrieved: {title}");
 
-                                if (numGames == _config.NumGamesToRetrieve) break;
+                                if (numGames == _config.NumGamesToRetrieve)
+                                    break;
                             }
                             catch
                             {
-                                Console.ForegroundColor = ConsoleColor.DarkRed;
-                                Console.WriteLine($"\tFailed to retrieve game: {title}");
+                                _logger.LogInformation($"Failed to retrieve game: {title}");
                             }
                         }
 
@@ -96,10 +102,9 @@ namespace TFM.Services.Scraping
 
             await Task.WhenAll(tasks);
 
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"Num. of scraped games: {metacriticObjects.Count}");
+            _logger.LogInformation($"Num. of scraped games: {metacriticObjects.Count}");
 
-            await Task.Delay(1000);
+            await Task.Delay(500);
 
             return metacriticObjects;
         }
