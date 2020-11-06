@@ -1,10 +1,10 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TFM.Data.Models.Configuration;
 using TFM.Data.Models.Metacritic;
@@ -13,7 +13,7 @@ namespace TFM.Services.Scraping
 {
     public interface IScrapingService
     {
-        Task<IEnumerable<MetacriticObject>> Scrape();
+        Task<IEnumerable<MetacriticGame>> ScrapeAsync();
     }
 
     public class ScrapingService : IScrapingService
@@ -24,20 +24,18 @@ namespace TFM.Services.Scraping
         private readonly HttpClient _httpClient = null;
         private readonly AppSettings _config = null;
 
-        public ScrapingService(AppSettings config, IHttpClientFactory clientFactory, ILogger<ScrapingService> logger)
+        public ScrapingService(AppSettings config, ILogger<ScrapingService> logger, IHttpClientFactory clientFactory)
         {
             _config = config;
             _logger = logger;
             _httpClient = clientFactory.CreateClient();
-            _httpClient.DefaultRequestHeaders.Add("x-rapidapi-host", _config.MetacriticApi.Host);
-            _httpClient.DefaultRequestHeaders.Add("x-rapidapi-key", _config.MetacriticApi.Key);
         }
 
-        public async Task<IEnumerable<MetacriticObject>> Scrape()
+        public async Task<IEnumerable<MetacriticGame>> ScrapeAsync()
         {
-            var metacriticObjects = new List<MetacriticObject>();
+            var metacriticGames = new List<MetacriticGame>();
 
-            var tasks = _config.Platforms.Select(platform =>
+            var tasks = _config.Metacritic.Platforms.Select(platform =>
             {
                 return Task.Run(async () =>
                 {
@@ -45,7 +43,7 @@ namespace TFM.Services.Scraping
                     int numGames = 0;
 
                     // Get the first n games from metacritic
-                    while (numGames < _config.NumGamesToRetrieve)
+                    while (numGames < _config.Metacritic.NumGamesToRetrieve)
                     {
                         var scrapingUrl = string.Format(platform.Value.ScrapingUrl, numPage);
 
@@ -58,41 +56,41 @@ namespace TFM.Services.Scraping
                         var doc = new HtmlDocument();
                         doc.LoadHtml(htmlContent);
 
-                        // Get the games titles
-                        var titles = new List<string>();
+                        // Get the games relative urls
+                        var relativeUrls = new List<string>();
                         foreach (var node in doc.DocumentNode.SelectNodes("//*[contains(@class,'clamp-image-wrap')]"))
                         {
-                            var attribute = node.SelectSingleNode("a/img").Attributes["alt"];
-                            if (attribute != null)
-                                titles.Add(attribute.Value);
+                            var relativeUrl = node.SelectNodes(".//a").First().GetAttributeValue("href", "");
+                            if (relativeUrl != null)
+                                relativeUrls.Add(relativeUrl);
                         }
 
                         // get all the games info from metacritic
-                        foreach (var title in titles)
+                        foreach (var relativeUrl in relativeUrls)
                         {
                             try
                             {
-                                var apiUrl = string.Format(platform.Value.ApiUrl, title);
-                                var responseString = await _httpClient.GetStringAsync(new Uri(apiUrl));
-                                var metacriticObject = JsonConvert.DeserializeObject<MetacriticObject>(responseString);
-                                var imageBytes = await _httpClient.GetByteArrayAsync(new Uri(metacriticObject.Result.Image));
-
-                                metacriticObject.Result.ImageBytes = imageBytes;
-                                metacriticObject.Result.Platform = platform.Key;
-                                metacriticObject.Result.Position = ++numGames;
+                                var gameUrl = _config.Metacritic.BaseUrl + relativeUrl;
+                                var responseString = await _httpClient.GetStringAsync(new Uri(gameUrl));
+                                await Task.Delay(500);
+                                var metacriticGame = ParseGame(responseString);
+                                metacriticGame.ImageBytes = await _httpClient.GetByteArrayAsync(new Uri(metacriticGame.Image));
+                                await Task.Delay(500);
+                                metacriticGame.Platform = platform.Key;
+                                metacriticGame.Position = ++numGames;
 
                                 lock (_locker)
-                                    metacriticObjects.Add(metacriticObject);
+                                    metacriticGames.Add(metacriticGame);
 
-                                _logger.LogInformation($"{numGames}. {platform.Key} game retrieved: {title}");
-
-                                if (numGames == _config.NumGamesToRetrieve)
-                                    break;
+                                _logger.LogInformation($"{numGames}. {platform.Key} game retrieved: {metacriticGame.Title}");
                             }
                             catch
                             {
-                                _logger.LogInformation($"Failed to retrieve game: {title}");
+                                _logger.LogInformation($"**************Failed to retrieve game: {relativeUrl}");
                             }
+
+                            if (numGames == _config.Metacritic.NumGamesToRetrieve)
+                                break;
                         }
 
                         numPage++;
@@ -101,12 +99,100 @@ namespace TFM.Services.Scraping
             });
 
             await Task.WhenAll(tasks);
-
-            _logger.LogInformation($"Num. of scraped games: {metacriticObjects.Count}");
-
             await Task.Delay(500);
 
-            return metacriticObjects;
+            _logger.LogInformation($"Num. of scraped games: {metacriticGames.Count}");
+
+            return metacriticGames;
+        }
+
+        private MetacriticGame ParseGame(string htmlString)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(htmlString);
+
+            var game = new MetacriticGame
+            {
+                Title = doc.DocumentNode.SelectNodes(@"//div[@class='content_head product_content_head game_content_head']/div[@class='product_title']/a/h1").First().InnerText,
+                Score = int.Parse(doc.DocumentNode.SelectNodes(@"//div[@class='metascore_w xlarge game positive']").First().InnerText),
+                Image = doc.DocumentNode.SelectNodes(@"//div[@class='product_image large_image must_play']/img[@class='product_image large_image']").First().GetAttributeValue("src", "")
+            };
+
+            int i = 0;
+            string s;
+            List<string> sList;
+
+            sList = doc.DocumentNode.SelectNodes(@"//div[@class='content_head product_content_head game_content_head']/div[@class='product_data']/ul/li")
+                .Select(li => li.InnerText.Replace("\t", "").Replace("\n", ""))
+                .ToList();
+
+            s = RemoveMultipleSpaces(sList[i]).Trim();
+            s = s.Substring("Publisher: ".Length);
+            game.Publisher = s.Split(',').Select(t => t.Trim()).ToArray();
+
+            s = RemoveMultipleSpaces(sList[++i]).Trim();
+            game.ReleaseDate = s.Substring("Release Date: ".Length);
+
+            for (i += 1; i < sList.Count; i++)
+            {
+                if (sList[i].Contains("Also On:"))
+                {
+                    s = RemoveMultipleSpaces(sList[i]).Trim();
+                    s = s.Substring("Also On: ".Length);
+                    game.AlsoAvailableOn = s.Split(',').Select(t => t.Trim()).ToArray();
+
+                    break;
+                }
+            }
+
+            sList = doc.DocumentNode.SelectNodes(@"//div[@class='section product_details']/div[@class='details side_details']/ul/li")
+                .Select(li => li.InnerText.Replace("\t", "").Replace("\n", ""))
+                .ToList();
+
+            i = 0;
+            s = RemoveMultipleSpaces(sList[i]).Trim();
+            game.Developer = s.Substring("Developer: ".Length);
+
+            s = RemoveMultipleSpaces(sList[++i]).Trim();
+            s = s.Substring("Genre(s): ".Length);
+            game.Genre = s.Split(',').Select(t => t.Trim()).ToArray();
+
+            s = RemoveMultipleSpaces(sList[++i]).Trim();
+            game.NumberOfPlayers = s.Substring("# of players: ".Length);
+
+            for (i += 1; i < sList.Count; i++)
+            {
+                if (sList[i].Contains("Rating:"))
+                {
+                    s = RemoveMultipleSpaces(sList[i]).Trim();
+                    game.Rating = s.Substring("Rating: ".Length);
+
+                    break;
+                }
+            }
+
+            try
+            {
+                sList = doc.DocumentNode.SelectNodes(@"//div[@class='section product_details']/div[@class='details main_details']/ul/li")
+                  .Select(li => li.InnerText.Replace("\t", "").Replace("\n", ""))
+                  .ToList();
+
+                i = 0;
+                s = RemoveMultipleSpaces(sList[i]).Trim();
+                game.Description = s.Contains("&hellip;") ?
+                    s.Substring("Summary: ".Length, s.IndexOf("&hellip;") - "&hellip;".Length - 1) : s.Substring("Summary: ".Length);
+            }
+            catch
+            {
+                game.Description = "";
+            }
+
+            return game;
+        }
+
+        private string RemoveMultipleSpaces(string sentence)
+        {
+            return new Regex("[ ]{2,}", RegexOptions.None).Replace(sentence, " ");
         }
     }
 }

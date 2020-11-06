@@ -1,44 +1,47 @@
-﻿using Google.Cloud.Translation.V2;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Translation.V2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using TFM.Data.DB;
+using TFM.Data.Models.Configuration;
 using TFM.Data.Models.Ranking;
 
 namespace TFM.Services.Ranking
 {
     public interface IRankingService
     {
-        Task<IEnumerable<MailMessage>> UpsertRanking(IEnumerable<Game> games);
+        Task<IEnumerable<MailMessage>> UpsertRankingAsync(IEnumerable<Game> games);
     }
 
     public class RankingService : IRankingService
     {
         private readonly object _locker = new object();
 
-        private readonly Data.Models.Configuration.AppSettings _config = null;
+        private readonly AppSettings _config = null;
         private readonly IServiceProvider _sp = null;
         private readonly ILogger<RankingService> _logger;
         private readonly TranslationClient _translationClient;
 
-        public RankingService(Data.Models.Configuration.AppSettings config, IServiceProvider sp, ILogger<RankingService> logger)
+        public RankingService(AppSettings config, IServiceProvider sp, ILogger<RankingService> logger)
         {
             _config = config;
             _sp = sp;
             _logger = logger;
-            _translationClient = TranslationClient.Create();
+            _translationClient = TranslationClient.Create(GoogleCredential.FromJson(JsonConvert.SerializeObject(_config.GoogleCredentials)));
         }
 
-        public async Task<IEnumerable<MailMessage>> UpsertRanking(IEnumerable<Game> games)
+        public async Task<IEnumerable<MailMessage>> UpsertRankingAsync(IEnumerable<Game> games)
         {
             var mails = new List<MailMessage>();
 
-            var tasks = _config.Platforms.Select(platform =>
+            var tasks = _config.Metacritic.Platforms.Select(platform =>
             {
                 return Task.Run(async () =>
                 {
@@ -47,9 +50,10 @@ namespace TFM.Services.Ranking
 
                     var platformGames = games.Where(g => g.Platform == platform.Key);
                     var dbPlatformGames = await db.Games.Where(g => g.Platform == (int)platform.Key).ToListAsync();
-                    var gamesToRemove = dbPlatformGames.Where(pg => !platformGames.Any(g => g.Name == pg.Name));
 
-                    db.Games.RemoveRange(gamesToRemove);
+                    var gamesToRemove = dbPlatformGames.Where(pg => !platformGames.Any(g => g.Name == pg.Name));
+                    if (gamesToRemove.Count() > 0)
+                        db.Games.RemoveRange(gamesToRemove);
 
                     foreach (var game in platformGames)
                     {
@@ -59,7 +63,7 @@ namespace TFM.Services.Ranking
                             _ = db.Games.Add(new Games
                             {
                                 CompanyName = game.CompanyName,
-                                LongDescription = (await _translationClient.TranslateHtmlAsync(game.LongDescription, "es")).TranslatedText,
+                                LongDescription = (await _translationClient.TranslateTextAsync(game.LongDescription, "es")).TranslatedText,
                                 Name = game.Name,
                                 Position = game.Position,
                                 Score = game.Score,

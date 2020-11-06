@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TFM.Data.DB;
+using TFM.Data.Models.Configuration;
 using TFM.Data.Models.Ranking;
 
 namespace TFM.WebApi.Controllers
@@ -13,10 +14,12 @@ namespace TFM.WebApi.Controllers
     public class GamesController : ControllerBase
     {
         private readonly TFMContext _db = null;
+        private readonly AppSettings _config = null;
 
-        public GamesController(TFMContext db)
+        public GamesController(TFMContext db, AppSettings config)
         {
             _db = db;
+            _config = config;
         }
 
         [HttpGet]
@@ -24,14 +27,19 @@ namespace TFM.WebApi.Controllers
         {
             var query = _db.Games.AsQueryable();
 
-            if (filter?.NumberOfGames > 0)
-                query = query.Where(g => g.Position <= filter.NumberOfGames);
+            int numGamesToShow = _config.Ranking.DefaultNumGamesToShow;
 
-            return await query.OrderBy(g => g.Position).Select(g => new Game(g)).ToListAsync();
+            if (filter?.NumGamesToShow > 0)
+                numGamesToShow = filter.NumGamesToShow;
+
+            return await query
+                .Where(g => g.Position <= numGamesToShow)
+                .OrderBy(g => g.Position)
+                .Select(g => new Game(g)).ToListAsync();
         }
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<Game>> GetById(int id) =>
-            await _db.Games.Where(g => g.Id == id).Select(g => new Game(g)).FirstOrDefaultAsync(); 
+            await _db.Games.Where(g => g.Id == id).Select(g => new Game(g)).FirstOrDefaultAsync();
     }
 }

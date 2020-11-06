@@ -2,26 +2,26 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
-using System.Net.Mail;
 using System.Threading;
 using System.Threading.Tasks;
 using TFM.Data.Models.Configuration;
-using TFM.Services.Mail;
 
 namespace TFM.Services.JobServices.Ping
 {
+    public interface IPingJobService
+    {
+        protected Task ExecuteAsync(CancellationToken stoppingToken);
+    }
     public class PingJobService : BackgroundService
     {
         private readonly ILogger<PingJobService> _logger = null;
         private readonly HttpClient _httpClient = null;
         private readonly AppSettings _config = null;
-        private readonly IMailService _mailService = null;
 
-        public PingJobService(ILogger<PingJobService> logger, AppSettings config, IHttpClientFactory clientFactory, IMailService mailService)
+        public PingJobService(ILogger<PingJobService> logger, AppSettings config, IHttpClientFactory clientFactory)
         {
             _logger = logger;
             _config = config;
-            _mailService = mailService;
             _httpClient = clientFactory.CreateClient();
         }
 
@@ -39,7 +39,7 @@ namespace TFM.Services.JobServices.Ping
 
                         _logger.LogInformation($"Ping to {_config.Jobs.PingJobService.PingUrl} worked.");
                     }
-                    catch (Exception)
+                    catch
                     {
                         _logger.LogInformation($"Ping to {_config.Jobs.PingJobService.PingUrl} failed.");
                     }
@@ -49,11 +49,6 @@ namespace TFM.Services.JobServices.Ping
             }
             catch (TaskCanceledException)
             {
-                await _mailService.SendMail(new MailMessage
-                {
-                    Subject = "PingJobService has been canceled.",
-                    Body = $"Restart de WebAPi to get the ranking updated once per day."
-                });
             }
             finally
             {

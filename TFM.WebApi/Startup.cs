@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -7,18 +8,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Polly;
+using Polly.Extensions.Http;
 using TFM.Data.Models.Configuration;
 using TFM.Services.JobServices.Ping;
 using TFM.Services.JobServices.Ranking;
 using TFM.Services.Mail;
 using TFM.Services.Ranking;
 using TFM.Services.Scraping;
+using TFM.WebApi.Middlewares;
 
 namespace TFM.WebApi
 {
     public class Startup
     {
-        private readonly string MyAllowAllOrigins = "_myAllowAllOrigins";
+        private readonly string allowAllOrigins = "allowAllOrigins";
 
         public Startup(IConfiguration configuration)
         {
@@ -31,7 +35,7 @@ namespace TFM.WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             // Register CORS
-            services.AddCors(o => o.AddPolicy(MyAllowAllOrigins, builder =>
+            services.AddCors(o => o.AddPolicy(allowAllOrigins, builder =>
             {
                 builder.AllowAnyOrigin()
                        .AllowAnyMethod()
@@ -42,7 +46,7 @@ namespace TFM.WebApi
             services.AddControllers();
 
             // Register DB
-            services.AddDbContext<Data.DB.TFMContext>((sp, options) => options.UseSqlServer(sp.GetRequiredService<AppSettings>().TFMConnectionString,
+            services.AddDbContext<Data.DB.TFMContext>((sp, options) => options.UseSqlServer(sp.GetRequiredService<AppSettings>().Database.ProdConnectionString,
                 sqlServerOptionsAction: sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure(
@@ -55,8 +59,9 @@ namespace TFM.WebApi
             // Register Configs
             services.AddSingleton(Configuration.Get<AppSettings>());
 
-            // Register HttpClient
-            services.AddHttpClient();
+            // Middlewares & user
+            services.AddScoped<LoggerMiddleware>();
+            //services.AddScoped<Models.Security.UserInformation>();
 
             // Register Services
             services.AddTransient<IRankingService, RankingService>();
@@ -66,6 +71,10 @@ namespace TFM.WebApi
             // Register Hosted Services
             services.AddHostedService<PingJobService>();
             services.AddHostedService<LoadRankingJobService>();
+
+            // Register HttpClient
+            services.AddHttpClient("HttpClient")
+                .AddPolicyHandler(GetRetryPolicy());
 
             // Register Swagger
             services.AddSwaggerGen(options =>
@@ -77,6 +86,14 @@ namespace TFM.WebApi
             });
         }
 
+        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
+                .WaitAndRetryAsync(2, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+        }
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -85,7 +102,7 @@ namespace TFM.WebApi
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseCors(MyAllowAllOrigins);
+            app.UseCors(allowAllOrigins);
 
             app.UseSwagger();
 
@@ -96,6 +113,8 @@ namespace TFM.WebApi
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Games API");
                 c.RoutePrefix = string.Empty;
             });
+
+            app.UseLoggerMiddleware();
 
             app.UseHttpsRedirection();
 

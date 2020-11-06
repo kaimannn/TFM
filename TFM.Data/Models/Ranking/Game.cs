@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Text;
 using TFM.Data.DB;
+using TFM.Data.Models.Enums;
 using TFM.Data.Models.Metacritic;
 
 namespace TFM.Data.Models.Ranking
@@ -48,9 +50,26 @@ namespace TFM.Data.Models.Ranking
             Score = game.Score;
             ReleaseDate = Convert.ToDateTime(game.ReleaseDate);
             CreatedOn = DateTime.UtcNow;
-            Platform = game.Platform;
+            Platform = game.Platform.Value;
             ThumbnailUrl = game.Image;
             ThumbnailBytes = game.ImageBytes;
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Id: {Id}");
+            sb.AppendLine($"Name: {Name}");
+            sb.AppendLine($"CreatedOn: {CreatedOn}");
+            sb.AppendLine($"ModifiedOn: {ModifiedOn}");
+            sb.AppendLine($"ReleaseDate: {ReleaseDate}");
+            sb.AppendLine($"CompanyName: {CompanyName}");
+            sb.AppendLine($"Description: {LongDescription}");
+            sb.AppendLine($"Position: {Position}");
+            sb.AppendLine($"LastPosition: {LastPosition}");
+            sb.AppendLine($"Score: {Score}");
+            sb.AppendLine($"Platform: {Platform}");
+            return sb.ToString();
         }
     }
 }

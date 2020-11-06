@@ -1,3 +1,3 @@
-w# PlayStation Ranking Api
+w# Web Api
 
 

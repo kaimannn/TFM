@@ -1,4 +1,4 @@
-﻿using TFM.Data.Models.Ranking;
+﻿using TFM.Data.Models.Enums;
 
 namespace TFM.Data.Models.Metacritic
 {
@@ -13,8 +13,9 @@ namespace TFM.Data.Models.Metacritic
         public string Developer { get; set; }
         public string[] Publisher { get; set; }
         public string Rating { get; set; }
+        public string NumberOfPlayers { get; set; }
         public object[] AlsoAvailableOn { get; set; }
-        public Platform Platform { get; set; }
+        public Platform? Platform { get; set; }
         public int Position { get; set; }
         public byte[] ImageBytes { get; set; }
     }

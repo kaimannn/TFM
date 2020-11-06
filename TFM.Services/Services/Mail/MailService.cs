@@ -8,7 +8,7 @@ namespace TFM.Services.Mail
 {
     public interface IMailService
     {
-        Task SendMail(MailMessage mail);
+        Task SendMailAsync(MailMessage mail);
     }
 
     public class MailService : IMailService, IDisposable
@@ -32,7 +32,7 @@ namespace TFM.Services.Mail
             };
         }
 
-        public async Task SendMail(MailMessage mail)
+        public async Task SendMailAsync(MailMessage mail)
         {
             try
             {

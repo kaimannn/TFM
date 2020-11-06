@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Mail;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,16 +19,19 @@ namespace TFM.Services.JobServices.Ranking
         private readonly IMailService _mailService = null;
         private readonly IRankingService _rankingService = null;
         private readonly IScrapingService _scrapingService = null;
+        private readonly AppSettings _config = null;
 
         public LoadRankingJobService(ILogger<LoadRankingJobService> logger,
             IMailService mailService,
             IRankingService rankingService,
-            IScrapingService scrapingService)
+            IScrapingService scrapingService,
+            AppSettings config)
         {
             _logger = logger;
             _mailService = mailService;
             _rankingService = rankingService;
             _scrapingService = scrapingService;
+            _config = config;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,34 +45,50 @@ namespace TFM.Services.JobServices.Ranking
                     try
                     {
                         // scrape metacritic
-                        var metacriticObjects = await _scrapingService.Scrape();
+                        var metacriticGames =
+                            await _scrapingService.ScrapeAsync();
+                        if (metacriticGames.Count() < _config.Metacritic.NumGamesToRetrieve)
+                            throw new Exception($"Not enough games retrieved. Number of games retrieved is {metacriticGames.Count()} and should be retrieved {_config.Metacritic.NumGamesToRetrieve}");
 
                         // update db ranking
-                        var mails = await _rankingService.UpsertRanking(metacriticObjects.Select(mo => new Game(mo.Result)));
+                        var mails = await _rankingService.UpsertRankingAsync(metacriticGames.Select(mg => new Game(mg)));
 
                         // new added games notifications
                         foreach (var mail in mails)
-                        {
-                            await _mailService.SendMail(mail);
-                        }
+                            await _mailService.SendMailAsync(mail);
 
                         _logger.LogInformation($"LoadRankingJobService has been executed OK");
                     }
                     catch (Exception ex)
                     {
+                        using (var msg = new MailMessage
+                        {
+                            Subject = "Something went wrong!",
+                            Body = ex.ToString()
+                        })
+                        {
+                            await _mailService.SendMailAsync(msg);
+                        }
+
                         _logger.LogInformation($"LoadRankingJobService failed: {ex}");
                     }
 
-                    await Task.Delay(TimeSpan.FromMinutes(1)); //aki variable del cronconfig
+                    // Calculate delay
+                    var now = DateTime.Now;
+                    var tomorrow = now.AddDays(1);
+                    var delay = new DateTime(
+                        tomorrow.Year,
+                        tomorrow.Month,
+                        tomorrow.Day,
+                        _config.Jobs.LoadRankingJobService.ExecutionHour,
+                        _config.Jobs.LoadRankingJobService.ExecutionMinute,
+                        0) - now;
+
+                    await Task.Delay(delay, stoppingToken);
                 }
             }
             catch (TaskCanceledException)
             {
-                await _mailService.SendMail(new MailMessage
-                {
-                    Subject = "LoadRankingJobService has been canceled.",
-                    Body = $"Restart de WebAPi to get the ranking updated once per day."
-                });
             }
             finally
             {
