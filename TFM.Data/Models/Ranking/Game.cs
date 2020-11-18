@@ -22,6 +22,7 @@ namespace TFM.Data.Models.Ranking
         public Platform Platform { get; set; }
         public string ThumbnailUrl { get; set; }
         public byte[] ThumbnailBytes { get; set; }
+        public bool Deleted { get; set; }
 
         public Game(Games game)
         {
@@ -39,6 +40,7 @@ namespace TFM.Data.Models.Ranking
             Platform = (Platform)game.Platform;
             ThumbnailUrl = game.ThumbnailUrl;
             ThumbnailBytes = game.Thumbnail;
+            Deleted = game.Deleted;
         }
 
         public Game(MetacriticGame game)

@@ -45,48 +45,56 @@ namespace TFM.Services.Ranking
             {
                 return Task.Run(async () =>
                 {
+                    var scrapedGames = games.Where(g => g.Platform == platform.Key);
+
                     using var scope = _sp.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<TFMContext>();
+                    var dbGames = await db.Games.Where(g => g.Platform == (int)platform.Key).ToListAsync();
 
-                    var platformGames = games.Where(g => g.Platform == platform.Key);
-                    var dbPlatformGames = await db.Games.Where(g => g.Platform == (int)platform.Key).ToListAsync();
-
-                    var gamesToRemove = dbPlatformGames.Where(pg => !platformGames.Any(g => g.Name == pg.Name));
-                    if (gamesToRemove.Count() > 0)
-                        db.Games.RemoveRange(gamesToRemove);
-
-                    foreach (var game in platformGames)
+                    // delete games
+                    dbGames.Where(g => !scrapedGames.Any(sg => sg.Name == g.Name)).ToList().ForEach(g =>
                     {
-                        var dbGame = dbPlatformGames.Where(g => g.Name == game.Name).FirstOrDefault();
+                        g.Deleted = true;
+                        g.ModifiedOn = DateTime.UtcNow;
+                    });
+
+                    foreach (var scrapedGame in scrapedGames)
+                    {
+                        var dbGame = dbGames.Where(g => g.Name == scrapedGame.Name).FirstOrDefault();
                         if (dbGame == null)
                         {
                             _ = db.Games.Add(new Games
                             {
-                                CompanyName = game.CompanyName,
-                                LongDescription = (await _translationClient.TranslateTextAsync(game.LongDescription, "es")).TranslatedText,
-                                Name = game.Name,
-                                Position = game.Position,
-                                Score = game.Score,
-                                ReleaseDate = Convert.ToDateTime(game.ReleaseDate),
+                                CompanyName = scrapedGame.CompanyName,
+                                LongDescription = (await _translationClient.TranslateTextAsync(scrapedGame.LongDescription, "es")).TranslatedText,
+                                Name = scrapedGame.Name,
+                                Position = scrapedGame.Position,
+                                Score = scrapedGame.Score,
+                                ReleaseDate = Convert.ToDateTime(scrapedGame.ReleaseDate),
                                 CreatedOn = DateTime.UtcNow,
-                                Platform = (int)game.Platform,
-                                ThumbnailUrl = game.ThumbnailUrl,
-                                Thumbnail = game.ThumbnailBytes
+                                Platform = (int)scrapedGame.Platform,
+                                ThumbnailUrl = scrapedGame.ThumbnailUrl,
+                                Thumbnail = scrapedGame.ThumbnailBytes
                             });
 
-                            if (dbPlatformGames.Any())
+                            if (dbGames.Count > 0)
                             {
                                 lock (_locker)
-                                    mails.Add(new MailMessage { Subject = "TODO: New Translation to Review!", Body = $"{game.Name} -> New {game.Platform} game inserted at position {game.Position}" });
+                                    mails.Add(new MailMessage
+                                    {
+                                        Subject = "TODO: New Translation to Review!",
+                                        Body = $"{scrapedGame.Name} -> New {scrapedGame.Platform} game inserted at position {scrapedGame.Position}"
+                                    });
                             }
                         }
                         else
                         {
-                            if (dbGame.Position != game.Position)
+                            if (dbGame.Position != scrapedGame.Position || dbGame.Deleted)
                             {
                                 dbGame.LastPosition = dbGame.Position;
-                                dbGame.Position = game.Position;
+                                dbGame.Position = scrapedGame.Position;
                                 dbGame.ModifiedOn = DateTime.UtcNow;
+                                dbGame.Deleted = false;
                             }
                         }
                     }

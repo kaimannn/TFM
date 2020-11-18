@@ -68,13 +68,13 @@ namespace TFM.WebApi
             services.AddTransient<IMailService, MailService>();
             services.AddTransient<IScrapingService, ScrapingService>();
 
+            // Register HttpClient
+            services.AddHttpClient("httpClient")
+                .AddPolicyHandler(GetRetryPolicy());
+
             // Register Hosted Services
             services.AddHostedService<PingJobService>();
             services.AddHostedService<LoadRankingJobService>();
-
-            // Register HttpClient
-            services.AddHttpClient("HttpClient")
-                .AddPolicyHandler(GetRetryPolicy());
 
             // Register Swagger
             services.AddSwaggerGen(options =>
@@ -91,7 +91,8 @@ namespace TFM.WebApi
             return HttpPolicyExtensions
                 .HandleTransientHttpError()
                 .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
-                .WaitAndRetryAsync(2, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

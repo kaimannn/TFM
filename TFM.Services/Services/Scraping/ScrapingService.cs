@@ -28,7 +28,7 @@ namespace TFM.Services.Scraping
         {
             _config = config;
             _logger = logger;
-            _httpClient = clientFactory.CreateClient();
+            _httpClient = clientFactory.CreateClient("httpClient");
         }
 
         public async Task<IEnumerable<MetacriticGame>> ScrapeAsync()
@@ -72,10 +72,8 @@ namespace TFM.Services.Scraping
                             {
                                 var gameUrl = _config.Metacritic.BaseUrl + relativeUrl;
                                 var responseString = await _httpClient.GetStringAsync(new Uri(gameUrl));
-                                await Task.Delay(500);
                                 var metacriticGame = ParseGame(responseString);
                                 metacriticGame.ImageBytes = await _httpClient.GetByteArrayAsync(new Uri(metacriticGame.Image));
-                                await Task.Delay(500);
                                 metacriticGame.Platform = platform.Key;
                                 metacriticGame.Position = ++numGames;
 
@@ -86,7 +84,7 @@ namespace TFM.Services.Scraping
                             }
                             catch
                             {
-                                _logger.LogInformation($"**************Failed to retrieve game: {relativeUrl}");
+                                _logger.LogInformation($"Failed to retrieve game: {relativeUrl}");
                             }
 
                             if (numGames == _config.Metacritic.NumGamesToRetrieve)
@@ -106,7 +104,7 @@ namespace TFM.Services.Scraping
             return metacriticGames;
         }
 
-        private MetacriticGame ParseGame(string htmlString)
+        private static MetacriticGame ParseGame(string htmlString)
         {
             var doc = new HtmlDocument();
             doc.LoadHtml(htmlString);
@@ -127,18 +125,18 @@ namespace TFM.Services.Scraping
                 .ToList();
 
             s = RemoveMultipleSpaces(sList[i]).Trim();
-            s = s.Substring("Publisher: ".Length);
+            s = s["Publisher: ".Length..];
             game.Publisher = s.Split(',').Select(t => t.Trim()).ToArray();
 
             s = RemoveMultipleSpaces(sList[++i]).Trim();
-            game.ReleaseDate = s.Substring("Release Date: ".Length);
+            game.ReleaseDate = s["Release Date: ".Length..];
 
             for (i += 1; i < sList.Count; i++)
             {
                 if (sList[i].Contains("Also On:"))
                 {
                     s = RemoveMultipleSpaces(sList[i]).Trim();
-                    s = s.Substring("Also On: ".Length);
+                    s = s["Also On: ".Length..];
                     game.AlsoAvailableOn = s.Split(',').Select(t => t.Trim()).ToArray();
 
                     break;
@@ -151,21 +149,21 @@ namespace TFM.Services.Scraping
 
             i = 0;
             s = RemoveMultipleSpaces(sList[i]).Trim();
-            game.Developer = s.Substring("Developer: ".Length);
+            game.Developer = s["Developer: ".Length..];
 
             s = RemoveMultipleSpaces(sList[++i]).Trim();
-            s = s.Substring("Genre(s): ".Length);
+            s = s["Genre(s): ".Length..];
             game.Genre = s.Split(',').Select(t => t.Trim()).ToArray();
 
             s = RemoveMultipleSpaces(sList[++i]).Trim();
-            game.NumberOfPlayers = s.Substring("# of players: ".Length);
+            game.NumberOfPlayers = s["# of players: ".Length..];
 
             for (i += 1; i < sList.Count; i++)
             {
                 if (sList[i].Contains("Rating:"))
                 {
                     s = RemoveMultipleSpaces(sList[i]).Trim();
-                    game.Rating = s.Substring("Rating: ".Length);
+                    game.Rating = s["Rating: ".Length..];
 
                     break;
                 }
@@ -180,7 +178,7 @@ namespace TFM.Services.Scraping
                 i = 0;
                 s = RemoveMultipleSpaces(sList[i]).Trim();
                 game.Description = s.Contains("&hellip;") ?
-                    s.Substring("Summary: ".Length, s.IndexOf("&hellip;") - "&hellip;".Length - 1) : s.Substring("Summary: ".Length);
+                    s.Substring("Summary: ".Length, s.IndexOf("&hellip;") - "&hellip;".Length - 1) : s["Summary: ".Length..];
             }
             catch
             {
@@ -190,7 +188,7 @@ namespace TFM.Services.Scraping
             return game;
         }
 
-        private string RemoveMultipleSpaces(string sentence)
+        private static string RemoveMultipleSpaces(string sentence)
         {
             return new Regex("[ ]{2,}", RegexOptions.None).Replace(sentence, " ");
         }

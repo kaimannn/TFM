@@ -17,10 +17,7 @@ namespace TFM.WebApi.Middlewares
 
         public override void OnException(ExceptionContext context)
         {
-            using (_logger.BeginScope(new KeyValuePair<string, object>[]
-            {
-                //new KeyValuePair<string, object>("UserID", userInfo.UserID)
-            }))
+            using (_logger.BeginScope(System.Array.Empty<KeyValuePair<string, object>>()))
             {
                 _logger.LogError(context.Exception, "Logging exception");
 

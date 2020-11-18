@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace TFM.Data.DB
 {
@@ -24,8 +26,7 @@ namespace TFM.Data.DB
                     .IsUnique();
 
                 entity.HasIndex(e => new { e.Platform, e.Position })
-                    .HasName("IX_Games_PlatformPositions")
-                    .IsUnique();
+                    .HasName("IX_Games_PlatformPositions");
 
                 entity.Property(e => e.CompanyName)
                     .IsRequired()

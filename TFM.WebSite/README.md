@@ -1,3 +1,0 @@
-w# PlayStation Ranking WebSite
-
-

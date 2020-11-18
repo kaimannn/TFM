@@ -10,9 +10,9 @@ namespace TFM.Services.JobServices.Ping
 {
     public interface IPingJobService
     {
-        protected Task ExecuteAsync(CancellationToken stoppingToken);
     }
-    public class PingJobService : BackgroundService
+
+    public class PingJobService : BackgroundService, IPingJobService
     {
         private readonly ILogger<PingJobService> _logger = null;
         private readonly HttpClient _httpClient = null;
@@ -22,7 +22,7 @@ namespace TFM.Services.JobServices.Ping
         {
             _logger = logger;
             _config = config;
-            _httpClient = clientFactory.CreateClient();
+            _httpClient = clientFactory.CreateClient("httpClient");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,7 +35,7 @@ namespace TFM.Services.JobServices.Ping
                 {
                     try
                     {
-                        var response = await _httpClient.GetAsync(_config.Jobs.PingJobService.PingUrl);
+                        var response = await _httpClient.GetAsync(_config.Jobs.PingJobService.PingUrl, stoppingToken);
 
                         _logger.LogInformation($"Ping to {_config.Jobs.PingJobService.PingUrl} worked.");
                     }
@@ -44,7 +44,7 @@ namespace TFM.Services.JobServices.Ping
                         _logger.LogInformation($"Ping to {_config.Jobs.PingJobService.PingUrl} failed.");
                     }
 
-                    await Task.Delay(TimeSpan.FromMinutes(_config.Jobs.PingJobService.FrequencyInMinutes));
+                    await Task.Delay(TimeSpan.FromMinutes(_config.Jobs.PingJobService.FrequencyInMinutes), stoppingToken);
                 }
             }
             catch (TaskCanceledException)
