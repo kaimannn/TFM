@@ -33,7 +33,7 @@ namespace TFM.WebApi.Controllers
                 numGamesToShow = filter.NumGamesToShow;
 
             return await query
-                .Where(g => g.Position <= numGamesToShow)
+                .Where(g => g.Position <= numGamesToShow && !g.Deleted)
                 .OrderBy(g => g.Position)
                 .Select(g => new Game(g)).ToListAsync();
         }
