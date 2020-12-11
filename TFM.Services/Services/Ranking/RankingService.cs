@@ -49,7 +49,7 @@ namespace TFM.Services.Ranking
 
                     using var scope = _sp.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<TFMContext>();
-                    var dbGames = await db.Games.Where(g => g.Platform == (int)platform.Key).ToListAsync();
+                    var dbGames = await db.Games.Where(g => g.PlatformName == platform.Key.ToString()).ToListAsync();
 
                     // delete games
                     dbGames.Where(g => !scrapedGames.Any(sg => sg.Name == g.Name)).ToList().ForEach(g =>
@@ -66,18 +66,17 @@ namespace TFM.Services.Ranking
                             _ = db.Games.Add(new Games
                             {
                                 CompanyName = scrapedGame.CompanyName,
-                                LongDescription = (await _translationClient.TranslateTextAsync(scrapedGame.LongDescription, "es")).TranslatedText,
+                                Description = (await _translationClient.TranslateTextAsync(scrapedGame.Description, "es")).TranslatedText,
                                 Name = scrapedGame.Name,
                                 Position = scrapedGame.Position,
                                 Score = scrapedGame.Score,
                                 ReleaseDate = Convert.ToDateTime(scrapedGame.ReleaseDate),
                                 CreatedOn = DateTime.UtcNow,
-                                Platform = (int)scrapedGame.Platform,
-                                ThumbnailUrl = scrapedGame.ThumbnailUrl,
-                                Thumbnail = scrapedGame.ThumbnailBytes
+                                PlatformName = scrapedGame.Platform.ToString(),
+                                Thumbnail = scrapedGame.Thumbnail,
                             });
 
-                            if (dbGames.Count > 0)
+                            if (dbGames.Count() > 0)
                             {
                                 lock (_locker)
                                     mails.Add(new MailMessage
@@ -89,8 +88,11 @@ namespace TFM.Services.Ranking
                         }
                         else
                         {
-                            if (dbGame.Position != scrapedGame.Position || dbGame.Deleted)
+                            if (dbGame.Score != scrapedGame.Score ||
+                                dbGame.Position != scrapedGame.Position ||
+                                dbGame.Deleted)
                             {
+                                dbGame.Score = scrapedGame.Score;
                                 dbGame.LastPosition = dbGame.Position;
                                 dbGame.Position = scrapedGame.Position;
                                 dbGame.ModifiedOn = DateTime.UtcNow;

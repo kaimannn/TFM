@@ -21,11 +21,11 @@ namespace TFM.Data.DB
         {
             modelBuilder.Entity<Games>(entity =>
             {
-                entity.HasIndex(e => new { e.Platform, e.Name })
+                entity.HasIndex(e => new { e.PlatformName, e.Name })
                     .HasName("IX_Games_PlatformNames")
                     .IsUnique();
 
-                entity.HasIndex(e => new { e.Platform, e.Position })
+                entity.HasIndex(e => new { e.PlatformName, e.Position })
                     .HasName("IX_Games_PlatformPositions");
 
                 entity.Property(e => e.CompanyName)
@@ -34,7 +34,7 @@ namespace TFM.Data.DB
 
                 entity.Property(e => e.CreatedOn).HasColumnType("datetime");
 
-                entity.Property(e => e.LongDescription).IsRequired();
+                entity.Property(e => e.Description).IsRequired();
 
                 entity.Property(e => e.ModifiedOn).HasColumnType("datetime");
 
@@ -42,11 +42,13 @@ namespace TFM.Data.DB
                     .IsRequired()
                     .HasMaxLength(200);
 
+                entity.Property(e => e.PlatformName)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
                 entity.Property(e => e.ReleaseDate).HasColumnType("datetime");
 
-                entity.Property(e => e.ShortDescription).HasMaxLength(200);
-
-                entity.Property(e => e.ThumbnailUrl).HasMaxLength(200);
+                entity.Property(e => e.Thumbnail).HasMaxLength(200);
             });
 
             OnModelCreatingPartial(modelBuilder);

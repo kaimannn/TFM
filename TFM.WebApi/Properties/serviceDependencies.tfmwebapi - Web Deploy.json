@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "mssql2": {
+    "mssql1": {
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/seleni/databases/TFM",
       "type": "mssql.azure",
       "connectionId": "Database/ProdConnectionString",
       "secretStore": "AzureAppSettings"
     },
-    "mssql1": {
+    "mssql2": {
       "type": "mssql",
       "connectionId": "Database/DevConnectionString",
       "suggestion": "true",

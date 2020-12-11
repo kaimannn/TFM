@@ -14,14 +14,12 @@ namespace TFM.Data.Models.Ranking
         public DateTime CreatedOn { get; set; }
         public DateTime? ModifiedOn { get; set; }
         public string CompanyName { get; set; }
-        public string ShortDescription { get; set; }
-        public string LongDescription { get; set; }
+        public string Description { get; set; }
         public int Position { get; set; }
         public int? LastPosition { get; set; }
         public int Score { get; set; }
         public Platform Platform { get; set; }
-        public string ThumbnailUrl { get; set; }
-        public byte[] ThumbnailBytes { get; set; }
+        public string Thumbnail { get; set; }
         public bool Deleted { get; set; }
 
         public Game(Games game)
@@ -32,29 +30,26 @@ namespace TFM.Data.Models.Ranking
             CreatedOn = game.CreatedOn;
             ModifiedOn = game.ModifiedOn;
             CompanyName = game.CompanyName;
-            ShortDescription = game.ShortDescription;
-            LongDescription = game.LongDescription;
+            Description = game.Description;
             Position = game.Position;
             LastPosition = game.LastPosition;
             Score = game.Score;
-            Platform = (Platform)game.Platform;
-            ThumbnailUrl = game.ThumbnailUrl;
-            ThumbnailBytes = game.Thumbnail;
+            Platform = (Platform)Enum.Parse(typeof(Platform), game.PlatformName);
+            Thumbnail = game.Thumbnail;
             Deleted = game.Deleted;
         }
 
         public Game(MetacriticGame game)
         {
             CompanyName = game.Developer;
-            LongDescription = game.Description;
+            Description = game.Description;
             Name = game.Title;
             Position = game.Position;
             Score = game.Score;
             ReleaseDate = Convert.ToDateTime(game.ReleaseDate);
             CreatedOn = DateTime.UtcNow;
             Platform = game.Platform.Value;
-            ThumbnailUrl = game.Image;
-            ThumbnailBytes = game.ImageBytes;
+            Thumbnail = game.Thumbnail;
         }
 
         public override string ToString()
@@ -66,7 +61,7 @@ namespace TFM.Data.Models.Ranking
             sb.AppendLine($"ModifiedOn: {ModifiedOn}");
             sb.AppendLine($"ReleaseDate: {ReleaseDate}");
             sb.AppendLine($"CompanyName: {CompanyName}");
-            sb.AppendLine($"Description: {LongDescription}");
+            sb.AppendLine($"Description: {Description}");
             sb.AppendLine($"Position: {Position}");
             sb.AppendLine($"LastPosition: {LastPosition}");
             sb.AppendLine($"Score: {Score}");

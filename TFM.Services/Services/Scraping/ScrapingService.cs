@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TFM.Data.Models.Configuration;
+using TFM.Data.Models.Enums;
 using TFM.Data.Models.Metacritic;
 
 namespace TFM.Services.Scraping
@@ -72,10 +73,7 @@ namespace TFM.Services.Scraping
                             {
                                 var gameUrl = _config.Metacritic.BaseUrl + relativeUrl;
                                 var responseString = await _httpClient.GetStringAsync(new Uri(gameUrl));
-                                var metacriticGame = ParseGame(responseString);
-                                metacriticGame.ImageBytes = await _httpClient.GetByteArrayAsync(new Uri(metacriticGame.Image));
-                                metacriticGame.Platform = platform.Key;
-                                metacriticGame.Position = ++numGames;
+                                var metacriticGame = ParseGame(responseString, platform.Key, ref numGames);
 
                                 lock (_locker)
                                     metacriticGames.Add(metacriticGame);
@@ -104,7 +102,7 @@ namespace TFM.Services.Scraping
             return metacriticGames;
         }
 
-        private static MetacriticGame ParseGame(string htmlString)
+        private static MetacriticGame ParseGame(string htmlString, Platform platform, ref int numGames)
         {
             var doc = new HtmlDocument();
             doc.LoadHtml(htmlString);
@@ -113,7 +111,7 @@ namespace TFM.Services.Scraping
             {
                 Title = doc.DocumentNode.SelectNodes(@"//div[@class='content_head product_content_head game_content_head']/div[@class='product_title']/a/h1").First().InnerText,
                 Score = int.Parse(doc.DocumentNode.SelectNodes(@"//div[@class='metascore_w xlarge game positive']").First().InnerText),
-                Image = doc.DocumentNode.SelectNodes(@"//div[@class='product_image large_image must_play']/img[@class='product_image large_image']").First().GetAttributeValue("src", "")
+                Thumbnail = doc.DocumentNode.SelectNodes(@"//div[@class='product_image large_image must_play']/img[@class='product_image large_image']").First().GetAttributeValue("src", "")
             };
 
             int i = 0;
@@ -184,6 +182,9 @@ namespace TFM.Services.Scraping
             {
                 game.Description = "";
             }
+
+            game.Platform = platform;
+            game.Position = ++numGames;
 
             return game;
         }

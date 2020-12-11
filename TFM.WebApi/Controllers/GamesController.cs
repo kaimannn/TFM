@@ -23,17 +23,29 @@ namespace TFM.WebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IEnumerable<Game>> GetAll([FromQuery] Data.Filters.GamesFilter filter)
+        public async Task<IEnumerable<Game>> GetAllGames([FromQuery] Data.Filters.GamesFilter filter)
         {
             var query = _db.Games.AsQueryable();
 
-            int numGamesToShow = _config.Ranking.DefaultNumGamesToShow;
-
-            if (filter?.NumGamesToShow > 0)
-                numGamesToShow = filter.NumGamesToShow;
+            if (filter.NumGamesToShow == 0)
+                filter.NumGamesToShow = _config.Ranking.DefaultNumGamesToShow;
 
             return await query
-                .Where(g => g.Position <= numGamesToShow && !g.Deleted)
+                .Where(g => g.Position <= filter.NumGamesToShow && !g.Deleted)
+                .OrderBy(g => g.Position)
+                .Select(g => new Game(g)).ToListAsync();
+        }
+
+        [HttpGet("/platforms/{name}")]
+        public async Task<IEnumerable<Game>> GetPlatformGames([FromQuery] Data.Filters.GamesFilter filter, string name)
+        {
+            var query = _db.Games.AsQueryable();
+
+            if (filter.NumGamesToShow == 0)
+                filter.NumGamesToShow = _config.Ranking.DefaultNumGamesToShow;
+
+            return await query
+                .Where(g => g.Position <= filter.NumGamesToShow && !g.Deleted && g.PlatformName.ToLower() == name.ToLower())
                 .OrderBy(g => g.Position)
                 .Select(g => new Game(g)).ToListAsync();
         }
